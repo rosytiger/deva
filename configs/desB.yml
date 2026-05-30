@@ -21,7 +21,7 @@ models:
     metals: null
 
   metal3d:
-    model_path: ./models/metal3d/weights/metal3d_clean_ec.pth #./models/metal3d/weights/metal_0.5A_v3_d0.2_16Abox.pth
+    model_path: ./models/metal3d/weights/metal3d_cat.pth #./models/metal3d/weights/metal_0.5A_v3_d0.2_16Abox.pth
     max_metal_p: 0.2
     threshold: 5
 
