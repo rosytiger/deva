@@ -31,7 +31,20 @@ class Metal3DModel(BaseModel):
         
         self.model_config = self.config.models.metal3d
         self.max_metal_p = self.model_config.max_metal_p
-        
+
+        # Build var_idx for Metal3D scoring: pull the chain-prefixed
+        # var_residues string from the ligandmpnn config (e.g. "B15 B25 A85 A89"),
+        # strip the chain letters, and join the plain residue numbers into a
+        # single selection string (e.g. "15 25 85 89") for Metal3D's run().
+        # This restricts Metal3D's scan to just the target site instead of
+        # the whole structure (its default behavior when var_idx is empty).
+        var_residues_str = self.config.models.ligandmpnn.var_residues
+        var_residues_list = var_residues_str.split()
+        resnums = [item[1:] for item in var_residues_list]  # strip leading chain letter
+        self.var_idx = " ".join(resnums)
+        logger.info(f"Metal3D scoring restricted to var_idx: {self.var_idx} "
+                    f"(from var_residues: {var_residues_str})")
+
         outputs = self.config.general.outputs
 
         self.output_packed = os.path.join(outputs, "packed")
@@ -69,6 +82,7 @@ class Metal3DModel(BaseModel):
                                     out_root = out_root,
                                     pdb = curr_pdb,
                                     pdb_name = self.pdb_name, 
+                                    var_idx = self.var_idx,
                                     max_metal_p = self.max_metal_p,
                                     device=self.device)
         

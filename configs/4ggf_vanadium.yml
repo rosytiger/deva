@@ -2,7 +2,7 @@
 general: 
   cuda: true
   seed: 0
-  outputs: /scratch/users/rjurado1/4ggf_vanadium
+  outputs: /home/rjurado1/metal_binding_project/dEVA/outputs/4ggf_vanadium
   save_outputs: true
 
 input: 
@@ -10,8 +10,8 @@ input:
 
 
 evolution: 
-  n_generations: 20
-  n_individuals: 2
+  n_generations: 100
+  n_individuals: 1
   n_mutations: 4
   checkpoint_freq: 1
 
@@ -19,13 +19,13 @@ seq_model: ligandmpnn   # choices: ligandmpnn or proteinmpnn
 
 models: 
   metal3d:
-    model_path: /scratch/users/gelnesr/metal3d_data_filtered/27sep25/metal3d_clean_ec.pth #./models/metal3d/weights/metal_0.5A_v3_d0.2_16Abox.pth
+    model_path: ./models/metal3d/weights/metal3d_clean.pth
     max_metal_p: 0.2
   
   ligandmpnn: 
     model_path: ./models/ligandmpnn/model_params/ligandmpnn_v_32_020_25.pt
     packer_path: ./models/ligandmpnn/model_params/ligandmpnn_sc_v_32_002_16.pt
-    var_residues: "A17 A83 A87 C28 C30"
+    var_residues: "A83 A87 C20 C30" #A17 didn't belong and it isn't 28 but 20
     fixed_residues: ""       # e.g. "A12 A13 A14 B2 B25"
     bias_AA: "H:1.5,D:1.0"              # e.g. "A:-1.024,P:2.34,C:-12.34"
     bias_AA_per_residue: ""  # e.g. "A12:A:-1.024,P:2.34"

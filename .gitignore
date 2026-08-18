@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.pytorch_cache/
+logs/
+outputs/
+baseline_results/
+ProteinMPNN/

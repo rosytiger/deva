@@ -10,8 +10,7 @@ logger = logging.getLogger("evolution")
 logger.setLevel(logging.DEBUG)
 
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
-os.environ["PYTORCH_KERNEL_CACHE_PATH"] = "/scratch/users/gelnesr/.cache/pytorch_kernels"
-
+os.environ["PYTORCH_KERNEL_CACHE_PATH"] = os.path.expanduser("~/metal_binding_project/dEVA/.pytorch_cache")
 def main(args):
     engine = EvolutionEngine(config=args.config, pdb=args.pdb, out_folder=args.out_folder)
     config = engine.get_config()

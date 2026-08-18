@@ -1,0 +1,96 @@
+# dEVA Pipeline Debugging & ProteinMPNN Baseline — Session Report
+**Date:** July 3, 2026
+
+## Summary
+
+Today's work had two goals: (1) build a ProteinMPNN baseline to compare against dEVA's evolved vanadium-binding designs, and (2) find and fix why 1ODB and 3PSR were silently failing in the dEVA pipeline. Both were completed. A 100-generation run for all four structures (2WCB, 3PSR, 1ODB, 4GGF, in that order) is now queued on the cluster.
+
+---
+
+## Part 1: ProteinMPNN Baseline
+
+### Goal
+Compare dEVA's LigandMPNN-based, metal-biased sequence designs against a naive ProteinMPNN baseline with no metal-binding awareness, to see how much dEVA's evolutionary process and His/Asp bias actually contribute.
+
+### What was done
+- Located the standalone `ProteinMPNN` repo already installed at `dEVA/ProteinMPNN/` (separate from dEVA's internal LigandMPNN-based ProteinMPNN mode).
+- Wrote `run_baseline_proteinmpnn.sh`, a Slurm script that calls `ProteinMPNN/protein_mpnn_run.py` directly on each of the four raw PDB structures, generating 10 sequences per target with no metal bias.
+- Fixed two path bugs along the way: case mismatch (`proteinmpnn` vs `ProteinMPNN`), and PDB filename casing mismatches (`4ggf.pdb` lowercase vs `2WCB.pdb`/`1ODB.pdb`/`3PSR.pdb` uppercase).
+- All four baseline runs completed successfully, producing 10 sequences each.
+
+### Key finding
+Since ProteinMPNN doesn't rebuild sidechain 3D coordinates, its raw output can't be scored directly through Metal3D without an extra "sidechain packing" step. Reverse-engineering dEVA's internal packing pipeline (`prepare_ligandmpnn`, `pack_sc`, multi-chain sequence threading) turned out to be substantial additional engineering. Decision: skip full Metal3D scoring on the baseline for now, in favor of a cheaper, still-informative comparison.
+
+### Simplified comparison: residue preservation check
+Wrote `check_baseline_metal_residues.py`, which:
+1. Parses each original PDB to map residue numbers to sequence positions per chain (no hardcoded offsets, since chain numbering starts inconsistently across structures — some start at 0, some at 1).
+2. Parses each ProteinMPNN `.fa` output, skipping the first record (the native/original sequence).
+3. Checks whether each `var_residues` position (the His3Asp metal-coordinating residues) was preserved as His (H) or Asp (D) across the 10 designed sequences.
+
+**Result:** Out of 17 total var_residue positions checked across all four structures, only 3 showed majority (≥60%) His/Asp preservation. Most positions were at or near 0% preservation. This supports the expected hypothesis that dEVA's explicit `bias_AA: "H:1.5,D:1.0"` weighting is doing real work to preserve the metal-binding motif that a naive baseline discards.
+
+**Next step (optional, not yet done):** Pull the same positions from dEVA's own designed sequences and place them side by side with the baseline numbers for a direct comparison table.
+
+---
+
+## Part 2: Fixing 1ODB and 3PSR Silent Failures
+
+### Background
+In the original 20-generation dEVA run, 4GGF and 2WCB completed successfully, but 1ODB and 3PSR produced no output at all — no errors, no generations, nothing. This was the main mystery of the day.
+
+### Root causes found
+1. **3PSR config typo:** `configs/3psr_vanadium.yml` had `output:` instead of `outputs:` under the `general:` section. Since `general.outputs` is a required config key (used to set up checkpoint/output directories), this caused an immediate crash during engine setup — before any logging even happened, which is why it never appeared in the logs.
+2. **1ODB filename typo:** `configs/1odb_vanadium.yml` pointed to `inputs/10DB.pdb` (a zero) instead of `inputs/1ODB.pdb` (the letter O). This file either didn't exist or was a bad duplicate, causing the PDB-loading assertion to fail immediately, also before logging started.
+
+Both failures happened at the very first line of `EvolutionEngine.__init__`, before the "Designing protein from X" log message prints, which explains why grepping the logs for either structure name returned nothing.
+
+### Fixes applied
+```bash
+# Fix 3PSR: output -> outputs
+sed -i 's/^  output:/  outputs:/' configs/3psr_vanadium.yml
+
+# Fix 1ODB: correct the PDB filename typo
+sed -i 's|inputs/10DB.pdb|inputs/1ODB.pdb|' configs/1odb_vanadium.yml
+```
+
+### Verification
+Created throwaway test configs (`1odb_test.yml`, `3psr_test.yml`) with `n_generations: 2` and separate output folders, ran them interactively on a GPU node via `srun`, and confirmed both now run cleanly past the point where they used to fail. Test configs and outputs were deleted afterward.
+
+---
+
+## Part 3: Scaling Up to 100 Generations
+
+- Updated all four configs to `n_generations: 100` (previously 20).
+- Extended the Slurm time limit in `run_deva.sh` from 24 hours to 48 hours, based on a runtime estimate from the original successful 4GGF run (20 generations took ~2h29m, or ~7.5 min/generation for the largest structure — projecting to ~12.4 hours for 100 generations on 4GGF alone).
+- Reordered `run_deva.sh` to run smallest structures first (2WCB → 3PSR → 1ODB → 4GGF) instead of largest first, so partial results are available earlier rather than waiting behind the longest run.
+- Since 4GGF and 2WCB already had checkpoints saved at generation 20 from the original run, dEVA should auto-resume those and continue to 100 rather than starting over. 1ODB and 3PSR will run fresh from generation 0.
+
+### Final job submitted
+```bash
+sbatch run_deva.sh
+```
+Running all four structures to 100 generations each, expected total runtime in the 24-30+ hour range.
+
+---
+
+## Files created/modified today
+
+| File | Purpose |
+|---|---|
+| `run_baseline_proteinmpnn.sh` | Runs standalone ProteinMPNN baseline (no metal bias) on all four PDBs |
+| `check_baseline_metal_residues.py` | Checks His/Asp preservation at var_residues positions in baseline sequences |
+| `configs/1odb_vanadium.yml` | Fixed PDB filename typo, bumped to 100 generations |
+| `configs/3psr_vanadium.yml` | Fixed `output`→`outputs` typo, bumped to 100 generations |
+| `configs/2wcb_vanadium.yml` | Bumped to 100 generations |
+| `configs/4ggf_vanadium.yml` | Bumped to 100 generations |
+| `run_deva.sh` | Reordered structures, extended time limit to 48h |
+
+Deleted (no longer needed): `make_baseline_configs.sh` and the four `*_baseline.yml` configs (an earlier approach that ran ProteinMPNN through dEVA's internal pipeline instead of standalone — abandoned in favor of the standalone `ProteinMPNN` repo approach).
+
+---
+
+## Open items for next session
+
+1. Once the 100-generation run finishes, compare final pmetal/pmpnn scores across all four structures at generation 100.
+2. Optionally pull dEVA's own designed sequences at the var_residues positions and compare directly against the baseline preservation numbers from Part 1.
+3. Consider whether a full Metal3D-scored ProteinMPNN baseline is worth the additional engineering effort (packing pipeline reverse-engineering), or whether the residue-preservation comparison is sufficient for the intended use.

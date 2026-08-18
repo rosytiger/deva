@@ -76,11 +76,11 @@ def get_encoded_residues(protein_dict, icodes):
     return encoded_residues, encoded_residue_dict, encoded_residue_dict_rev
 
 # fix/streamline
-def bias_aa(args, encoded_residues, bias_AA_per_residue_multi, device='cuda'):
+def bias_aa(args, encoded_residues, encoded_residue_dict, bias_AA_per_residue_multi, device='cuda'):
     bias_AA_per_residue = torch.zeros([len(encoded_residues), 21], device=device, dtype=torch.float32)
     
     if args.bias_AA_per_residue:
-        bias_dict = bias_AA_per_residue_multi[pdb]
+        bias_dict = bias_AA_per_residue_multi
         for residue_name, v1 in bias_dict.items():
             if residue_name in encoded_residues:
                 i1 = encoded_residue_dict[residue_name]
@@ -96,7 +96,7 @@ def omit_aa(args, encoded_residues, encoded_residue_dict, omit_AA_per_residue_mu
             [len(encoded_residues), 21], device=device, dtype=torch.float32
         )
     if args.omit_AA_per_residue:
-        omit_dict = omit_AA_per_residue_multi[pdb]
+        omit_dict = omit_AA_per_residue_multi
         for residue_name, v1 in omit_dict.items():
             if residue_name in encoded_residues:
                 i1 = encoded_residue_dict[residue_name]
@@ -142,8 +142,8 @@ def prepare_ligandmpnn(args,
                        device='cuda'):
 
     encoded_residues, encoded_residue_dict, encoded_residue_dict_rev = get_encoded_residues(protein_dict, icodes)
-    bias_AA_per_residue = bias_aa(args, encoded_residues, design_params['bias_AA_per_residue'], device)
-    omit_AA_per_residue = omit_aa(args, encoded_residues, design_params['omit_AA_per_residue'], device)
+    bias_AA_per_residue = bias_aa(args, encoded_residues, encoded_residue_dict, design_params['bias_AA_per_residue'], device)
+    omit_AA_per_residue = omit_aa(args, encoded_residues, encoded_residue_dict, design_params['omit_AA_per_residue'], device)
 
     fixed_residues = design_params['fixed_residues']
     var_residues = design_params['var_residues']

@@ -8,18 +8,17 @@
 #SBATCH --mem=16G
 #SBATCH --time=02:00:00
 
-# Ensure directories exist
 mkdir -p /home/rjurado1/metal_binding_project/dEVA/logs
 mkdir -p /home/rjurado1/metal_binding_project/dEVA/baseline_results
 
-source activate deva_env 
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate deva_env
 
-# Adjust this path based on where you found protein_mpnn_run.py
-PMPNN_SCRIPT="/home/rjurado1/metal_binding_project/dEVA/proteinmpnn/protein_mpnn_run.py"
-PDB_DIR="/home/rjurado1/metal_binding_project/dEVA/pdbs"
+PMPNN_SCRIPT="/home/rjurado1/metal_binding_project/dEVA/ProteinMPNN/protein_mpnn_run.py"
+PDB_DIR="/home/rjurado1/metal_binding_project/dEVA/inputs"
 OUT_DIR="/home/rjurado1/metal_binding_project/dEVA/baseline_results"
 
-proteins=("4GGF" "2WCB" "1ODB" "3PSR")
+proteins=("4ggf" "2WCB" "1ODB" "3PSR")
 
 for pdb in "${proteins[@]}"; do
     echo "=== Running $pdb baseline ==="
@@ -31,3 +30,6 @@ for pdb in "${proteins[@]}"; do
         --batch_size 1 \
         --model_name v_48_020
 done
+
+echo "=== All baseline runs complete ==="
+chmod +x run_baseline_proteinmpnn.sh

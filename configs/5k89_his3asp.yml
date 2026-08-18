@@ -1,0 +1,69 @@
+# config
+general:
+  cuda: true
+  seed: 0
+  outputs: /home/rjurado1/metal_binding_project/dEVA/outputs/5k89_hisasp_dimer_v5
+  save_outputs: true
+
+input:
+  pdb: "inputs/5k89_dEVA.pdb" # the pdb
+
+evolution:
+  n_generations: 50
+  n_individuals: 2
+  n_mutations: 4
+  checkpoint_freq: 1
+
+seq_model: ligandmpnn   # choices: ligandmpnn or proteinmpnn
+
+models:
+  metal3d:
+    model_path: ./models/metal3d/weights/metal3d_clean.pth
+    max_metal_p: 0.2
+
+  ligandmpnn:
+    model_path: ./models/ligandmpnn/model_params/ligandmpnn_v_32_020_25.pt
+    packer_path: ./models/ligandmpnn/model_params/ligandmpnn_sc_v_32_002_16.pt
+    # Single His3Asp site on 5K89. A17 (native His) intentionally left OUT
+    # of var_residues so it stays completely fixed/unmodified.
+    # A27 (Tyr->Asp), H87 (Asn->His), H90 (Phe->His)
+    var_residues: "A17 A27 H87 H90 H17 H27 A87 A90"
+    fixed_residues: ""       # e.g. "A12 A13 A14 B2 B25"
+    bias_AA: "H:0.4,D:0.4"   # global nudge toward His/Asp (2 want His, 1 wants Asp)
+    bias_AA_per_residue: "/home/rjurado1/metal_binding_project/dEVA/biases.json"  # A27 specifically toward Asp (trailing-space key)
+    omit_AA: "C"
+    omit_AA_per_residue: "/home/rjurado1/metal_binding_project/dEVA/omit_lysarg.json"  # forbid Lys/Arg at all 3 positions (trailing-space keys)
+    symmetry_residues: ""
+    symmetry_weights: ""
+    homo_oligomer: 0
+    sc_num_denoising_steps: 8
+    sc_num_samples: 1
+    ligand_mpnn_cutoff_for_score: 20.0
+    temperature: 0.1
+    zero_indexed: 0
+    autoregressive_score: 0
+    single_aa_score: 1
+    chains_to_design: ""
+    parse_these_chains_only: ""
+    parse_atoms_with_zero_occupancy: 0
+    verbose: false
+
+  proteinmpnn:
+    model_path: ./models/ligandmpnn/model_params/proteinmpnn_v_48_010.pt
+    ligand_mpnn_cutoff_for_score: 20.0
+    temperature: 0.1
+    zero_indexed: 0
+    autoregressive_score: 0
+    single_aa_score: 1
+    fixed_residues: ""
+    bias_AA: ""
+    bias_AA_per_residue: ""
+    omit_AA: "C"
+    omit_AA_per_residue: ""
+    symmetry_residues: ""
+    symmetry_weights: ""
+    homo_oligomer: 0
+    chains_to_design: ""
+    parse_these_chains_only: ""
+    parse_atoms_with_zero_occupancy: 0
+    verbose: false
