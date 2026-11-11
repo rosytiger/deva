@@ -45,6 +45,8 @@ class Metal3DModel(BaseModel):
         logger.info(f"Metal3D scoring restricted to var_idx: {self.var_idx} "
                     f"(from var_residues: {var_residues_str})")
 
+        self.threshold = self.model_config.threshold
+        
         outputs = self.config.general.outputs
 
         self.output_packed = os.path.join(outputs, "packed")
@@ -74,16 +76,17 @@ class Metal3DModel(BaseModel):
         gen = individual.get_gen()
         curr_pdb = individual.get_name()
         
-        out_root = os.path.join(self.output_metals, f'{self.pdb_name}_metals_gen{gen}_ind{index}')
+        metals_root = os.path.join(self.output_metals, f'{self.pdb_name}_metals_gen{gen}_ind{index}')
+        gen_root = os.path.join(self.output_gen, f'{self.pdb_name}_metals_gen{gen}_ind{index}')
 
         pmetal, outfile, found = run(self.model,
-                                    output_metals = self.output_metals,
-                                    output_gen = self.output_gen,
-                                    out_root = out_root,
+                                    output_metals = metals_root,
+                                    output_gen = gen_root,
                                     pdb = curr_pdb,
                                     pdb_name = self.pdb_name, 
                                     var_idx = self.var_idx,
                                     max_metal_p = self.max_metal_p,
+                                    threshold=self.threshold,
                                     device=self.device)
         
         individual.add_fitness({'pmetal': pmetal})

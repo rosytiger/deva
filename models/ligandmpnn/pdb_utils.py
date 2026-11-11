@@ -49,7 +49,7 @@ def pack_sc(args, model, protein_dict, S, other_atoms, icodes, outfile, device="
         model,
         args.sc_num_denoising_steps,
         args.sc_num_samples,
-        1,
+        getattr(args, "repack_everything", 0),
     )
     model.cpu()
 
@@ -67,6 +67,7 @@ def pack_sc(args, model, protein_dict, S, other_atoms, icodes, outfile, device="
         S.squeeze().cpu().numpy(),
         icodes=icodes,
         force_hetatm=1,
+        other_atoms=other_atoms if getattr(args, "keep_ligand_in_packed", 0) else None,
     )
 def add_header(filename, fitnesses: dict, sequence: str):
     """Write a standardized REMARK header with all fitness metrics."""
